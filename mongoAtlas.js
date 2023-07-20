@@ -1,13 +1,17 @@
 const express = require('express');
 const { ObjectId } = require('mongodb');
-const app = express();
-app.use(express.json());
-
 const env = require('dotenv');
+const MongoClient = require('mongodb').MongoClient;
 
 env.config();
+// No rechaza peticiones con cors
+const cors = require('cors');
 
-const MongoClient = require('mongodb').MongoClient;
+const app = express();
+
+app.use(cors());
+
+app.use(express.json());
 
 const uri = process.env.MONGO_URI;
 const client = new MongoClient(uri, {
@@ -30,17 +34,17 @@ const db = client.db('todo_list');
 const collection = db.collection('home-task');
 
 app.post('/create', async (req, res) => {
-    const { title, description, priority } = req.body;
-    if (!title || !description || !priority) {
-        res.status(401).send({
+    const { name, description } = req.body;
+    await client.connect();
+    if (!name) {
+        res.status(404).send({
             menssage: "Campos requeridos no completados"
         });
     } else {
         const newTask = {
-            title,
+            name,
             description,
-            priority,
-            completed: false
+            checked: false
         }
         await client.connect();
         const doc = await collection.insertOne(newTask);
@@ -60,30 +64,6 @@ app.get('/read', async (req, res) => {
     }
 })
 
-app.put('/update/:id', async (req, res) => {
-    try {
-        await client.connect();
-        
-        const taskId = req.params.id;
-        const taskBody = req.body
-
-        const updateTask = await collection.updateOne(
-            {_id: new ObjectId(taskId)}, 
-            {$set: taskBody}
-        )
-
-        if (updateTask.modifiedCount > 0) {
-            res.status(200).send(updateTask);
-        } else {
-            res.status(404).send({
-                message: "Tarea no encontrada"
-            });
-        }  
-    } catch (error) {
-        res.status(500).send({ error });
-    }
-})
-
 app.delete('/delete/:id', async (req, res) => {
     try {
         await client.connect();
@@ -99,9 +79,39 @@ app.delete('/delete/:id', async (req, res) => {
             });
         }
     } catch (error) {
-        res.status(500).send({ error });
+        res.status(500).send({ 
+            message: "Error al eliminar la tarea",
+            error: error
+        });
     }
+})
 
+app.put('/update/:id', async (req, res) => {
+    try {
+        await client.connect();
+        
+        const taskId = req.params.id;
+        const taskBody = req.body;
+        console.log(taskBody);
+
+        const updateTask = await collection.updateOne(
+            {_id: new ObjectId(taskId)}, 
+            {$set: taskBody}
+        )
+            
+        if (updateTask.modifiedCount > 0) {
+            res.status(200).send(updateTask);
+        } else {
+            res.status(404).send({
+                message: "No hay modificaciones"
+            });
+        }  
+    } catch (error) {
+        res.status(500).send({ 
+            message: "Error al editar la tarea",
+            error: error
+         });
+    }
 })
 
 app.listen(3000, () => {
