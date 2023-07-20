@@ -33,6 +33,7 @@ app.get('/', async (req, res) => {
 const db = client.db('todo_list');
 const collection = db.collection('home-task');
 
+// Merch con Fron my-react-task-list
 app.post('/create', async (req, res) => {
     const { name, description } = req.body;
     await client.connect();
@@ -98,7 +99,7 @@ app.put('/update/:id', async (req, res) => {
             {_id: new ObjectId(taskId)}, 
             {$set: taskBody}
         )
-            
+
         if (updateTask.modifiedCount > 0) {
             res.status(200).send(updateTask);
         } else {
